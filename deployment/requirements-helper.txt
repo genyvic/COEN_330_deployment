@@ -1,0 +1,8 @@
+# Python libraries for the Linux tool (check_app.py), installed by install.sh.
+# Not pinned, so they install on any Ubuntu version. If scikit-learn's version
+# differs from the website's, model.py simply retrains the model (2 seconds).
+scikit-learn
+pandas
+numpy
+joblib
+psutil
