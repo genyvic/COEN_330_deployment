@@ -10,7 +10,7 @@ Extra time:    +62.0 %
 Power-saving mode: ⚖️ Worth it if you're not in a hurry
 ```
 
-**Website:** https://coen330-powersaver.streamlit.app
+**Website:** https://testcoen330deployment.streamlit.app
 
 It has two parts:
 
@@ -129,7 +129,7 @@ streamlit run app.py
 
 1. Go to <https://share.streamlit.io>, sign in with GitHub, click **Create app**.
 2. Choose the repo `genyvic/COEN_330_deployment`, branch `main`, main file `deployment/app.py`.
-3. In **App URL**, type `coen330-powersaver`, then **Deploy**.
+3. In **App URL**, type `testcoen330deployment`, then **Deploy**.
    (If you choose another name, change `WEBSITE_URL` in `check_app.py` and the top of this README.)
 
 ## Limitations
