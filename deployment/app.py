@@ -26,7 +26,7 @@ APP_NAMES = {
     "imagemagick_resize": "ImageMagick: resizing photos",
     "blender_render": "Blender: rendering a 3D scene",
 }
-INSTALL_CMD = ("curl -sSL https://raw.githubusercontent.com/<team>/<repo>/main/"
+INSTALL_CMD = ("curl -sSL https://raw.githubusercontent.com/genyvic/COEN_330_deployment/main/"
                "deployment/install.sh | sudo bash")
 
 

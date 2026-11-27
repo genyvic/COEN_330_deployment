@@ -2,7 +2,7 @@
 # install.sh - installs the power-saver check tool on Ubuntu (laptop or VMware VM).
 #
 # One line, from the internet:
-#   curl -sSL https://raw.githubusercontent.com/<team>/<repo>/main/deployment/install.sh | sudo bash
+#   curl -sSL https://raw.githubusercontent.com/genyvic/COEN_330_deployment/main/deployment/install.sh | sudo bash
 # From a copy of the repo:
 #   sudo bash deployment/install.sh
 # Add --autostart to start watch mode at every boot (popups without typing anything):
@@ -12,7 +12,7 @@
 # to /opt/powersaver, and adds the command `powersaver-check`.
 set -euo pipefail
 
-REPO_RAW="${REPO_RAW:-https://raw.githubusercontent.com/<team>/<repo>/main/deployment}"
+REPO_RAW="${REPO_RAW:-https://raw.githubusercontent.com/genyvic/COEN_330_deployment/main/deployment}"
 DIR=/opt/powersaver
 FILES="check_app.py features.py model.py dataset_B_final.csv requirements-helper.txt"
 AUTOSTART=0

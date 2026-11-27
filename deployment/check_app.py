@@ -33,7 +33,7 @@ sys.path.insert(0, HERE)
 from features import FEATURES, WINDOW_S, compute_features  # noqa: E402
 
 # Change this to your Streamlit link after deploying (or set POWERSAVER_URL)
-WEBSITE_URL = os.environ.get("POWERSAVER_URL", "https://<your-app>.streamlit.app")
+WEBSITE_URL = os.environ.get("POWERSAVER_URL", "https://coen330-powersaver.streamlit.app")
 
 # Same counters as collect_data.py (they fit in the CPU's hardware counters)
 PERF_EVENTS = [

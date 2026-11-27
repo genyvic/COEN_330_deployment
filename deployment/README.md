@@ -10,7 +10,7 @@ Extra time:    +62.0 %
 Power-saving mode: ⚖️ Worth it if you're not in a hurry
 ```
 
-**Website:** `https://<your-app>.streamlit.app` *(replace after deploying)*
+**Website:** https://coen330-powersaver.streamlit.app
 
 It has two parts:
 
@@ -40,7 +40,7 @@ Needs Ubuntu, `sudo`, and ideally an Intel CPU (for power readings).
 
 **Install** (one time, about 3 minutes):
 ```bash
-curl -sSL https://raw.githubusercontent.com/<team>/<repo>/main/deployment/install.sh | sudo bash
+curl -sSL https://raw.githubusercontent.com/genyvic/COEN_330_deployment/main/deployment/install.sh | sudo bash
 ```
 Or from a copy of this repo: `sudo bash deployment/install.sh`.
 The installer is short: it installs `perf`, Python and `notify-send`, copies the tool to
@@ -127,11 +127,10 @@ streamlit run app.py
 
 ## Deploy on Streamlit Community Cloud
 
-1. Push this repo to GitHub.
-2. Go to <https://share.streamlit.io>, sign in with GitHub, click **Create app**.
-3. Choose the repo, branch `main`, main file `deployment/app.py`, then **Deploy**.
-4. Copy the app's link into: `WEBSITE_URL` in `check_app.py`, `INSTALL_CMD` in `app.py`
-   (also replace `<team>/<repo>`), `REPO_RAW` in `install.sh`, and the top of this README.
+1. Go to <https://share.streamlit.io>, sign in with GitHub, click **Create app**.
+2. Choose the repo `genyvic/COEN_330_deployment`, branch `main`, main file `deployment/app.py`.
+3. In **App URL**, type `coen330-powersaver`, then **Deploy**.
+   (If you choose another name, change `WEBSITE_URL` in `check_app.py` and the top of this README.)
 
 ## Limitations
 
