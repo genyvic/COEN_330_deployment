@@ -70,6 +70,11 @@ sudo powersaver-check --watch --no-busy           # only react to programs from 
 sudo powersaver-check --watch --watch-list gzip,xz,blender   # your own list
 ```
 Each app gets at most one popup every 2 minutes.
+
+**Always on:** install with `--autostart` (see below) and watch mode starts at every boot and
+waits for you to log in. It uses about 1% of the CPU. For accurate predictions, keep the laptop
+in the same conditions as our data: **Balanced** power mode (it skips measuring while the
+laptop is already in power-saver mode), plugged in, no other heavy programs.
 To start watch mode automatically at every boot, install with
 `curl -sSL .../install.sh | sudo bash -s -- --autostart`.
 

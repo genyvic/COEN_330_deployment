@@ -112,6 +112,20 @@ def cpu_temp():
     return None
 
 
+def power_profile():
+    """Current Ubuntu power mode: 'balanced', 'performance' or 'power-saver' (None if unknown)."""
+    try:
+        return subprocess.run(["powerprofilesctl", "get"], capture_output=True,
+                              text=True, timeout=5).stdout.strip() or None
+    except Exception:
+        return None
+
+
+SAVER_MSG = ("The laptop is already in power-saver mode, so the measurement wouldn't look like "
+             "our data (collected in Balanced mode). Switch to Balanced (top-right menu > "
+             "Power Mode) to get a prediction.")
+
+
 def measure_idle(domains, seconds):
     """Power (W) and CPU use of the whole computer (%) before the program starts."""
     psutil.cpu_percent(None)
@@ -406,6 +420,8 @@ def report(name, raw, args, watch_mode):
 # ------------------------------------------------------------------ mode 1: one program
 def run_one(cmd, args, domains, interval_count_ok):
     name = os.path.basename(cmd[0])
+    if power_profile() == "power-saver":
+        sys.exit(SAVER_MSG)
     print(f"Measuring the computer before starting {name} (3 s)...")
     temp = cpu_temp()
     idle_power, background = measure_idle(domains, 3)
@@ -460,21 +476,27 @@ def watch(args, domains, interval_count_ok):
          its CPU use stays above --busy-cpu % for 1 second, then the next 5 s are measured
     """
     names = set(args.watch_list.split(",")) if args.watch_list else WATCH_LIST
-    user = desktop_user()
-    user = user.pw_name if user else None
     print("Watch mode (Ctrl+C to stop). A popup appears when:")
     print("  - one of these programs starts: " + ", ".join(sorted(names)))
-    if not args.no_busy and user:
-        print(f"  - any of {user}'s apps starts working hard "
+    if not args.no_busy:
+        print(f"  - an app of the logged-in user starts working hard "
               f"(more than {args.busy_cpu}% CPU for 1 s), e.g. a render or an export")
 
     seen = set(psutil.pids())
     idle = IdleMonitor(domains)
     busy_hits, measured = {}, {}          # pid -> busy checks in a row / last measured time
-    last_busy_check = 0.0
+    last_busy_check = last_user_check = 0.0
+    user = None
     try:
         while True:
             idle.tick()
+            # at boot (--autostart) nobody is logged in yet: keep looking every 5 s
+            if user is None and time.monotonic() - last_user_check >= 5:
+                last_user_check = time.monotonic()
+                pw = desktop_user()
+                if pw and pw.pw_uid != 0:
+                    user = pw.pw_name
+                    print(f"Watching the apps of {user}.")
             # ---- trigger 1: a program from the list starts
             for p in psutil.process_iter(["pid", "name", "ppid", "create_time"]):
                 if p.pid in seen:
@@ -517,6 +539,9 @@ def watch(args, domains, interval_count_ok):
 
 def watch_one(p, name, why, args, idle, interval_count_ok, skip_recent):
     name = name.replace(".bin", "")
+    if power_profile() == "power-saver":
+        print(f"\n{name} {why}, but not measured. {SAVER_MSG}")
+        return
     print(f"\n{name} {why} (pid {p.pid}), measuring {WINDOW_S} seconds...")
     temp = cpu_temp()
     idle_power, background = idle.value(skip_recent)
