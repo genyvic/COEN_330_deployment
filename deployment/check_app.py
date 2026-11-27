@@ -126,7 +126,7 @@ class IdleMonitor:
     """Watch mode: keeps measuring the computer's power and CPU use every second,
     so we know what they were just BEFORE a program started."""
 
-    def __init__(self, domains, keep=3):
+    def __init__(self, domains, keep=8):
         self.domains, self.keep, self.samples = domains, keep, []
         psutil.cpu_percent(None)
         self.last = (read_rapl(domains) if domains else None, time.monotonic())
@@ -140,12 +140,15 @@ class IdleMonitor:
         self.samples = (self.samples + [(power, psutil.cpu_percent(None))])[-self.keep:]
         self.last = (e1, t1)
 
-    def value(self):
-        if not self.samples:
+    def value(self, skip_recent=0):
+        """Average of the last few seconds. `skip_recent` leaves out the newest
+        seconds (when an app got busy, those already include its work)."""
+        samples = self.samples[:len(self.samples) - skip_recent][-3:]
+        if not samples:
             return None, None
-        powers = [p for p, _ in self.samples if p is not None]
+        powers = [p for p, _ in samples if p is not None]
         return ((sum(powers) / len(powers)) if powers else None,
-                sum(c for _, c in self.samples) / len(self.samples))
+                sum(c for _, c in samples) / len(samples))
 
 
 # ------------------------------------------------------------------ perf
@@ -440,15 +443,39 @@ def run_one(cmd, args, domains, interval_count_ok):
 
 
 # ------------------------------------------------------------------ mode 2: watch
+# Desktop processes that are often busy but aren't "programs doing a job"
+IGNORE_BUSY = {
+    "gnome-shell", "Xwayland", "Xorg", "mutter", "pipewire", "pipewire-pulse", "wireplumber",
+    "tracker-miner-fs-3", "localsearch-3", "gnome-software", "snapd", "packagekitd",
+    "update-notifier", "ibus-daemon", "gnome-terminal-server", "ptyxis", "ptyxis-agent",
+    "vmtoolsd", "gjs", "evolution-data-server", "nautilus", "perf",
+}
+BUSY_COOLDOWN_S = 120     # don't measure the same app again for 2 minutes
+
+
 def watch(args, domains, interval_count_ok):
+    """Two triggers:
+      1. a program from the watch list STARTS (measured from its start, like our data)
+      2. an app that is already open GETS BUSY (e.g. you click Render in Blender):
+         its CPU use stays above --busy-cpu % for 1 second, then the next 5 s are measured
+    """
     names = set(args.watch_list.split(",")) if args.watch_list else WATCH_LIST
-    print("Watch mode: waiting for one of these programs to start (Ctrl+C to stop):")
-    print("  " + ", ".join(sorted(names)))
+    user = desktop_user()
+    user = user.pw_name if user else None
+    print("Watch mode (Ctrl+C to stop). A popup appears when:")
+    print("  - one of these programs starts: " + ", ".join(sorted(names)))
+    if not args.no_busy and user:
+        print(f"  - any of {user}'s apps starts working hard "
+              f"(more than {args.busy_cpu}% CPU for 1 s), e.g. a render or an export")
+
     seen = set(psutil.pids())
     idle = IdleMonitor(domains)
+    busy_hits, measured = {}, {}          # pid -> busy checks in a row / last measured time
+    last_busy_check = 0.0
     try:
         while True:
             idle.tick()
+            # ---- trigger 1: a program from the list starts
             for p in psutil.process_iter(["pid", "name", "ppid", "create_time"]):
                 if p.pid in seen:
                     continue
@@ -460,18 +487,39 @@ def watch(args, domains, interval_count_ok):
                         continue
                 except psutil.NoSuchProcess:
                     pass
-                watch_one(p, args, idle, interval_count_ok)
+                watch_one(p, p.info["name"], "started", args, idle, interval_count_ok, 0)
+                measured[p.pid] = time.monotonic()
                 seen.update(psutil.pids())        # ignore what started during the measurement
+
+            # ---- trigger 2: an open app gets busy (checked every 0.5 s)
+            if not args.no_busy and user and time.monotonic() - last_busy_check >= 0.5:
+                last_busy_check = time.monotonic()
+                for p in psutil.process_iter(["pid", "name", "username", "cpu_percent"]):
+                    pid, name = p.pid, p.info["name"]
+                    if (p.info["username"] != user or name in IGNORE_BUSY
+                            or time.monotonic() - measured.get(pid, -1e9) < BUSY_COOLDOWN_S):
+                        busy_hits.pop(pid, None)
+                        continue
+                    if (p.info["cpu_percent"] or 0) >= args.busy_cpu:
+                        busy_hits[pid] = busy_hits.get(pid, 0) + 1
+                    else:
+                        busy_hits.pop(pid, None)
+                    if busy_hits.get(pid, 0) >= 2:          # busy for about 1 second
+                        busy_hits.clear()
+                        watch_one(p, name, "is working hard", args, idle, interval_count_ok, 2)
+                        measured[pid] = time.monotonic()
+                        seen.update(psutil.pids())
+                        break
             time.sleep(0.1)
     except KeyboardInterrupt:
         print("\nStopped.")
 
 
-def watch_one(p, args, idle, interval_count_ok):
-    name = p.info["name"].replace(".bin", "")
-    print(f"\n{name} started (pid {p.pid}), measuring {WINDOW_S} seconds...")
+def watch_one(p, name, why, args, idle, interval_count_ok, skip_recent):
+    name = name.replace(".bin", "")
+    print(f"\n{name} {why} (pid {p.pid}), measuring {WINDOW_S} seconds...")
     temp = cpu_temp()
-    idle_power, background = idle.value()
+    idle_power, background = idle.value(skip_recent)
     out = temp_csv()
     perf_cmd = (["perf", "stat", "-I", "1000"]
                 + (["--interval-count", str(WINDOW_S)] if interval_count_ok else [])
@@ -501,6 +549,10 @@ def main():
     ap.add_argument("--watch", action="store_true",
                     help="wait in the background for programs from the watch list")
     ap.add_argument("--watch-list", help="comma-separated process names for --watch")
+    ap.add_argument("--busy-cpu", type=float, default=80,
+                    help="--watch: CPU %% (100 = one core) that counts as 'working hard' (default 80)")
+    ap.add_argument("--no-busy", action="store_true",
+                    help="--watch: only react to programs starting, not to open apps getting busy")
     ap.add_argument("--url", help=f"website link (default: {WEBSITE_URL})")
     ap.add_argument("--no-popup", action="store_true", help="no desktop notification")
     ap.add_argument("--no-browser", action="store_true", help="don't open the website")

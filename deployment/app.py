@@ -153,8 +153,10 @@ with tab_own:
     st.markdown("**2. Check one program:** start it through the tool. It measures the first "
                 "5 seconds, shows a popup, and opens this page with the result.")
     st.code("sudo powersaver-check gzip -k big_file.txt", language="bash")
-    st.markdown("**Or watch mode:** the tool waits in the background, and every time a "
-                "program from its list starts (gzip, blender, ffmpeg...), a popup appears.")
+    st.markdown("**Or watch mode:** the tool waits in the background while you use your apps "
+                "normally. When an app starts working hard (you click *Render* in Blender, "
+                "export a video, compress a folder...), or a program like gzip or ffmpeg starts, "
+                "a popup appears with the answer.")
     st.code("sudo powersaver-check --watch", language="bash")
     st.info("**No Linux laptop?** Use a VMware virtual machine with Ubuntu, and turn on "
             "*Virtualize CPU performance counters* (VM Settings → Processors). The README "

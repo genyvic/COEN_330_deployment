@@ -55,13 +55,21 @@ The tool measures the computer for 3 s, starts the program (as your normal user,
 measures its first 5 seconds, prints the result, shows a popup and opens the website.
 The program then keeps running normally.
 
-**Watch mode:** the tool waits in the background. When a program from its list starts
-(gzip, xz, ffmpeg, blender, make, LibreOffice...), a popup appears with the answer and an
-*Open details* button.
+**Watch mode (use your apps normally, by clicking):** the tool waits in the background and
+shows a popup with the answer and an *Open details* button when:
+- **an open app starts working hard** (more than 80% CPU for 1 second): for example you
+  click *Render* in Blender, export a video, apply a big filter in GIMP, or compress a folder
+  with the Archive Manager. It measures the next 5 seconds. (Just opening an app doesn't
+  count: loading a window isn't the app's real work.)
+- **a program from its list starts** (gzip, xz, 7z, ffmpeg, make...): measured from its
+  start, exactly like our data collection.
 ```bash
 sudo powersaver-check --watch
+sudo powersaver-check --watch --busy-cpu 150      # only react above 1.5 cores busy
+sudo powersaver-check --watch --no-busy           # only react to programs from the list
 sudo powersaver-check --watch --watch-list gzip,xz,blender   # your own list
 ```
+Each app gets at most one popup every 2 minutes.
 To start watch mode automatically at every boot, install with
 `curl -sSL .../install.sh | sudo bash -s -- --autostart`.
 
@@ -142,5 +150,9 @@ streamlit run app.py
   Programs shorter than 5 s aren't predicted.
 - **Watch mode starts about 0.1 s late** and only counts the threads that exist when it
   attaches (simple mode counts everything, like our data collection).
+- **"App gets busy" is an approximation:** the model learned from the first 5 s after a
+  program *starts*; here it sees the first 5 s after an app *gets busy*, which is similar
+  but not identical. Interactive apps with no fixed job (web browsers, games) can't really
+  get a meaningful "extra time".
 - **Small dataset:** 252 runs of 32 programs. Very different programs may be predicted badly.
 - **Linux only** for measuring, and it needs `sudo` (for `perf` and power readings).
